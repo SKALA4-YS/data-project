@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Day1 종합실습 실행결과 정리</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+    color: #1f2933; line-height: 1.55; font-size: 11pt; margin: 0;
+  }
+  header.cover {
+    border-bottom: 3px solid #2563eb; padding-bottom: 14px; margin-bottom: 22px;
+  }
+  header.cover h1 { font-size: 19pt; margin: 0 0 6px; color: #0f172a; }
+  header.cover .meta { font-size: 10pt; color: #52606d; }
+  header.cover .meta b { color: #1f2933; }
+  h2 {
+    font-size: 13.5pt; color: #1e3a8a; margin: 20px 0 8px;
+    border-left: 5px solid #2563eb; padding-left: 9px;
+  }
+  h3 { font-size: 11pt; margin: 12px 0 5px; color: #334155; }
+  p { margin: 6px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 10pt; margin: 8px 0; }
+  th, td { border: 1px solid #cbd5e1; padding: 5px 9px; text-align: left; }
+  th { background: #eff6ff; color: #1e3a8a; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  figure { margin: 6px 0 4px; break-inside: avoid; }
+  img.shot {
+    max-width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; display: block;
+  }
+  figcaption { font-size: 8.5pt; color: #64748b; margin-top: 3px; }
+  .tag {
+    display: inline-block; background: #dcfce7; color: #166534; font-size: 9pt;
+    padding: 1px 8px; border-radius: 10px; font-weight: 600;
+  }
+  ul { margin: 6px 0 6px 18px; padding: 0; }
+  li { margin: 3px 0; }
+  code { background: #f1f5f9; padding: 0 4px; border-radius: 3px; font-size: 9.5pt; }
+  .note {
+    background: #fefce8; border: 1px solid #fde047; border-radius: 6px;
+    padding: 8px 12px; font-size: 10pt; margin: 8px 0;
+  }
+  .avoid-break { break-inside: avoid; }
+  pre.code {
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;
+    padding: 9px 12px; font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 8.4pt; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+    color: #0f172a; margin: 5px 0; break-inside: avoid;
+  }
+  pre.code .c { color: #94a3b8; }
+  pre.code .k { color: #2563eb; font-weight: 600; }
+  .ba { display: flex; gap: 8px; }
+  .ba > div { flex: 1; }
+  .lbl { font-size: 8.5pt; font-weight: 700; margin: 2px 0; }
+  .lbl.bad { color: #b91c1c; }
+  .lbl.good { color: #15803d; }
+  footer { margin-top: 24px; border-top: 1px solid #cbd5e1; padding-top: 8px;
+    font-size: 8.5pt; color: #94a3b8; text-align: center; }
+</style>
+</head>
+<body>
+
+<header class="cover">
+  <h1>[Day 1 종합 실습] 데이터 수집 미니 파이프라인 — 실행결과 정리</h1>
+  <div class="meta">
+    <b>제출자</b> 광주 1반 나용성 &nbsp;·&nbsp;
+    <b>제출일</b> 2026-07-20 &nbsp;·&nbsp;
+    <b>실습명</b> day1종합실습 &nbsp;·&nbsp;
+    <b>저장소</b> github.com/SKALA4-YS/data-project
+  </div>
+</header>
+
+<h2>1. 프로젝트 개요</h2>
+<p>3개 외부 API를 <b>asyncio + httpx로 비동기 동시 수집</b>하고, <b>Pydantic v2</b>로 타입·범위를
+검증한 뒤, 검증 통과 데이터를 <b>CSV·Parquet</b>로 저장하며 읽기/쓰기 성능을 비교하는 파이프라인이다.</p>
+
+<table class="avoid-break">
+  <tr><th style="width:26%">파일</th><th>역할</th></tr>
+  <tr><td>collectors.py</td><td>asyncio + httpx로 3개 API를 <code>asyncio.gather()</code>로 동시 수집</td></tr>
+  <tr><td>schemas.py</td><td>Pydantic v2 모델 (타입·범위 검증)</td></tr>
+  <tr><td>storage.py</td><td>CSV/Parquet 저장 + 읽기/쓰기 성능 측정(워밍업·반복 평균)</td></tr>
+  <tr><td>main.py</td><td>수집→검증→저장 전체 파이프라인 진입점</td></tr>
+  <tr><td>tests/test_schemas.py</td><td>스키마 검증 pytest (5건)</td></tr>
+</table>
+<p style="font-size:10pt"><b>사용 API</b> — Open-Meteo(서울 3일 시간대별 기온·강수확률) / countries.dev(한국 국가 정보) / ip-api(IP 지역 정보)</p>
+
+<h2>2. 실행 결과 (화면 캡처)</h2>
+
+<h3>(A) 파이프라인 실행 &nbsp;<span class="tag">python main.py</span></h3>
+<figure>
+  <img class="shot" src="화면_1.png" alt="main.py 실행 결과">
+  <figcaption>3개 API 동시 수집(72건) → 검증(valid 72 / errors 0) → CSV·Parquet 성능 비교</figcaption>
+</figure>
+
+<h3>(B) 단위 테스트 &nbsp;<span class="tag">pytest -v</span></h3>
+<figure>
+  <img class="shot" src="화면_2.png" alt="pytest 실행 결과">
+  <figcaption>스키마 검증 테스트 5건 전부 통과 (5 passed)</figcaption>
+</figure>
+
+<h3>(C) 코드 스타일 검사 &nbsp;<span class="tag">ruff check .</span></h3>
+<figure>
+  <img class="shot" src="화면_3.png" alt="ruff 검사 결과">
+  <figcaption>스타일 오류 없음 (All checks passed!)</figcaption>
+</figure>
+
+<h2>3. 성능 측정 결과 분석</h2>
+<table class="avoid-break">
+  <tr><th>항목</th><th class="num">CSV</th><th class="num">Parquet</th><th>비교</th></tr>
+  <tr><td>쓰기 (ms)</td><td class="num">0.329</td><td class="num">0.263</td><td>Parquet 근소 우위</td></tr>
+  <tr><td>읽기 (ms)</td><td class="num">0.163</td><td class="num">0.302</td><td>CSV 근소 우위</td></tr>
+  <tr><td>파일 용량 (bytes)</td><td class="num">1,852</td><td class="num">3,439</td><td>CSV가 작음</td></tr>
+</table>
+<div class="note">
+  <b>측정 방법:</b> 최초 측정 시 pyarrow 초기화(cold start) 비용이 Parquet 쪽에 잡혀 결과가
+  크게 왜곡되어, <b>워밍업 1회 후 100회 반복 평균</b>으로 재측정했다. 그럼에도 쓰기·읽기 모두
+  1ms 미만이라 실행마다 CSV/Parquet 우열이 뒤바뀔 만큼 <b>측정 노이즈 범위</b> 안에 있다.
+</div>
+
+<h2>4. Git 커밋 이력</h2>
+<p>의미 단위로 6개 커밋을 나누어 개발 과정을 기록했으며, <code>SKALA4-YS/data-project</code>
+저장소의 <code>main</code> 브랜치에 반영되어 있다.</p>
+<figure>
+  <img class="shot" src="화면_4.png" alt="git log 커밋 이력">
+  <figcaption>git log --oneline -6 (HEAD → main, origin/main)</figcaption>
+</figure>
+
+<h2>5. 코드 분석 및 본인 의견</h2>
+
+<h3>5.1 설계 관점 — 잘한 점과 근거</h3>
+<p><b>① 비동기 수집.</b> <code>asyncio.gather()</code>로 3개 API를 동시 호출해, 순차 호출 시
+누적되던 응답 대기시간을 병렬로 겹쳐 전체 대기시간을 단축했다. 세 요청이 서로 독립적이고
+네트워크 I/O 바운드이므로 async의 이점이 극대화되는 이상적 사례다.</p>
+<p><b>② Pydantic 검증.</b> dict 직접 접근 대신 모델로 타입·범위(강수확률 0~100, 인구&gt;0 등)를
+강제해 잘못된 데이터를 파이프라인 초입에서 차단한다. 실패를 <code>ValidationError</code>로 잡아
+valid/errors로 분리하므로, 오염된 데이터가 저장 단계로 전파되지 않는다.</p>
+<p><b>③ CSV vs Parquet.</b> 72행 소규모에서는 쓰기·읽기 모두 1ms 미만이라 실행마다 우열이 바뀌는
+노이즈 수준이었고(이번 측정: 쓰기 Parquet·읽기 CSV 근소 우위), <b>파일 용량은 CSV(1.8KB)가
+Parquet(3.4KB)보다 일관되게 작았다</b>. 이는 Parquet의 스키마·메타데이터 고정 오버헤드 때문으로,
+컬럼 지향·압축의 진가는 수십만 행 이상 대용량·분석 쿼리에서 드러난다. 즉 <b>소규모엔 CSV,
+대규모·분석용엔 Parquet</b>이 합리적이다.</p>
+
+<h3>5.2 코드 품질 개선 방안 (자체 코드 리뷰)</h3>
+<p>현재 코드는 요구사항을 충족하지만, 실무 견고성 관점에서 아래와 같은 개선 여지가 있다.</p>
+<table class="avoid-break">
+  <tr><th style="width:15%">영역</th><th style="width:42%">현재 코드의 한계</th><th>개선 방향</th></tr>
+  <tr>
+    <td><b>견고성</b></td>
+    <td><code>gather()</code>가 예외 발생 시 전체를 중단시키고, <code>fetch_json</code>에
+      네트워크 예외(timeout·5xx) 처리·재시도가 없다.</td>
+    <td><code>return_exceptions=True</code>로 부분 성공 허용, 지수 백오프 재시도 추가</td>
+  </tr>
+  <tr>
+    <td><b>관측성</b></td>
+    <td>결과를 <code>print</code>로만 출력해 로그 레벨·타임스탬프·실패 원인 추적이 어렵다.</td>
+    <td>표준 <code>logging</code> 전환(레벨·시각·모듈명), 수집 실패 건 구조적 기록</td>
+  </tr>
+  <tr>
+    <td><b>테스트</b></td>
+    <td>스키마 5건만 검증하고, 수집·파이프라인(valid/errors 분리) 로직은 테스트가 없다.</td>
+    <td><code>httpx.MockTransport</code>로 수집 모킹, 잘못된 행 주입해 분리 로직 검증</td>
+  </tr>
+  <tr>
+    <td><b>성능측정</b></td>
+    <td>단일 데이터 규모의 100회 <b>평균</b>만 보고해 편차·규모 의존성이 안 보인다.</td>
+    <td>표준편차 병기, 데이터 규모(1e2~1e6행) 스윕, Parquet 압축코덱(snappy·zstd) 비교</td>
+  </tr>
+  <tr>
+    <td><b>설정관리</b></td>
+    <td>API URL·타임아웃·반복횟수가 코드에 하드코딩되어 있다.</td>
+    <td>설정 파일/환경변수/<code>argparse</code>로 분리해 재사용·재현성 향상</td>
+  </tr>
+  <tr>
+    <td><b>타입안정성</b></td>
+    <td>런타임 검증만 있고 정적 타입 검사가 없다.</td>
+    <td><code>mypy</code> 도입, 모델에 <code>model_config(extra="forbid")</code>로 예상 밖 필드 차단</td>
+  </tr>
+</table>
+
+<h3>5.3 핵심 개선 예시 (Before → After)</h3>
+
+<p class="lbl">개선 ①: 일부 API 실패에도 파이프라인이 살아남도록 (부분 성공 + 예외 처리)</p>
+<div class="ba">
+  <div>
+    <div class="lbl bad">Before — 하나만 실패해도 전체 중단</div>
+<pre class="code">w, c, ip = await asyncio.gather(
+    fetch_json(client, WEATHER_URL),
+    fetch_json(client, COUNTRY_URL),
+    fetch_json(client, IP_URL),
+)  <span class="c"># 한 요청이 예외 → 즉시 전파, 전부 실패</span></pre>
+  </div>
+  <div>
+    <div class="lbl good">After — 실패를 격리해 성공분만 처리</div>
+<pre class="code">results = await asyncio.gather(
+    fetch_json(client, WEATHER_URL),
+    fetch_json(client, COUNTRY_URL),
+    fetch_json(client, IP_URL),
+    return_exceptions=<span class="k">True</span>,
+)
+<span class="c"># 예외 객체는 걸러내고 성공한 소스만 후속 처리</span>
+ok = [r <span class="k">for</span> r <span class="k">in</span> results
+      <span class="k">if</span> <span class="k">not</span> isinstance(r, Exception)]</pre>
+  </div>
+</div>
+
+<p class="lbl" style="margin-top:10px">개선 ②: 일시적 네트워크 장애에 대한 재시도(지수 백오프)</p>
+<pre class="code"><span class="k">async def</span> fetch_json(client, url, retries=3):
+    <span class="k">for</span> attempt <span class="k">in</span> range(retries):
+        <span class="k">try</span>:
+            resp = <span class="k">await</span> client.get(url)
+            resp.raise_for_status()
+            <span class="k">return</span> resp.json()
+        <span class="k">except</span> (httpx.TimeoutException, httpx.HTTPStatusError):
+            <span class="k">if</span> attempt == retries - 1:
+                <span class="k">raise</span>                       <span class="c"># 마지막 시도 실패 시 예외 전파</span>
+            <span class="k">await</span> asyncio.sleep(2 ** attempt)  <span class="c"># 1s → 2s → 4s 지수 백오프</span></pre>
+
+<p style="font-size:10pt;margin-top:8px"><b>종합 의견.</b> 이번 실습은 "수집→검증→저장→비교"의
+데이터 파이프라인 골격을 async·Pydantic·컬럼형 포맷이라는 실무 요소로 구현했다는 점에서 의미가
+있었다. 다만 <b>외부 의존성(네트워크)의 실패를 전제로 한 방어적 설계</b>와 <b>관측성·테스트</b>를
+보강하면, 실습 코드에서 실제 운영 가능한 파이프라인으로 발전시킬 수 있다고 판단한다.</p>
+
+<footer>광주_1반_나용성_day1종합실습 · 실행결과 정리 · 2026-07-20</footer>
+
+</body>
+</html>
