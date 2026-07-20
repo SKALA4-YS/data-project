@@ -1,9 +1,10 @@
-# 가상환경 / 캐시 (제출 zip·커밋에 포함하지 않음)
+# 가상환경 / 캐시 / OS 부산물 (제출 zip·커밋에 포함하지 않음)
 .venv/
 __pycache__/
 *.pyc
 .pytest_cache/
 .ruff_cache/
+.DS_Store
 
 # 생성 결과물 (재실행으로 재생성됨)
 data/*.csv
