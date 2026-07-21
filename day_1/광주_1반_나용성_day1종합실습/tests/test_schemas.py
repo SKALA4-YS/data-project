@@ -8,7 +8,7 @@ Pydantic 스키마 검증 테스트 (pytest).
 import pytest
 from pydantic import ValidationError
 
-from schemas import CountryInfo, IpInfo, WeatherHourly
+from day_1.광주_1반_나용성_day1종합실습.schemas import CountryInfo, IpInfo, WeatherHourly
 
 
 def test_weather_valid():

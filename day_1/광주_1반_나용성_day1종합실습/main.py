@@ -26,9 +26,9 @@ from pathlib import Path
 import pandas as pd
 from pydantic import ValidationError
 
-from collectors import collect_all
-from schemas import CountryInfo, IpInfo, WeatherHourly
-from storage import save_and_benchmark
+from day_1.광주_1반_나용성_day1종합실습.collectors import collect_all
+from day_1.광주_1반_나용성_day1종합실습.schemas import CountryInfo, IpInfo, WeatherHourly
+from day_1.광주_1반_나용성_day1종합실습.storage import save_and_benchmark
 
 DATA_DIR = Path(__file__).parent / "data"
 
