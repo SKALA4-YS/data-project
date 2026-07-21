@@ -1,0 +1,10 @@
+# 가상환경 / 캐시 / OS 부산물
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+
+# 원본 데이터 캐시 (실행 시 재다운로드됨)
+outputs/adult_raw.data

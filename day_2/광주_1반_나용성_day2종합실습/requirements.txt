@@ -1,0 +1,8 @@
+pandas
+polars
+seaborn
+matplotlib
+scipy
+scikit-learn
+plotly
+joblib
