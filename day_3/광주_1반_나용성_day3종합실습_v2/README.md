@@ -8,7 +8,8 @@ DB `university`, 스키마 `academy`.
 
 | 경로 | 역할 |
 |------|------|
-| `erd/university_erd.mmd`, `erd/university_erd.png` | ERD (Mermaid, 범례 포함·선 겹침 없음) |
+| `erd/university_erd.mmd` | ERD 소스 (Mermaid) |
+| `erd/university_erd_with_legend.png` | ERD 이미지 (범례 박스 포함·선 겹침 없음, 리포트에 삽입) |
 | `sql/01_create_database.sql` | `university` DB 생성 |
 | `sql/02_create_schema.sql` | `academy` 스키마 생성 |
 | `sql/03_ddl_create_table.sql` | 5개 테이블 DDL (PK/FK/UNIQUE/CHECK/DEFAULT/NOT NULL) |
