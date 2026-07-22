@@ -1,0 +1,57 @@
+---
+title: 학사관리시스템 ERD (University Academic Management System)
+---
+erDiagram
+    DEPARTMENT ||--o{ PROFESSOR  : "소속 (1:N)"
+    DEPARTMENT ||--o{ STUDENT    : "소속 (1:N)"
+    DEPARTMENT ||--o{ COURSE     : "개설 (1:N)"
+    PROFESSOR  ||--o{ COURSE     : "담당 (1:N)"
+    STUDENT    ||--o{ ENROLLMENT : "신청 (1:N)"
+    COURSE     ||--o{ ENROLLMENT : "포함 (1:N)"
+
+    DEPARTMENT {
+        int      dept_id      PK "학과 ID"
+        varchar  dept_name    UK "학과명 (고유)"
+        varchar  college         "단과대학"
+        varchar  office_phone    "학과 사무실 전화"
+    }
+
+    PROFESSOR {
+        int      prof_id      PK "교수 ID"
+        varchar  prof_name       "교수명"
+        int      dept_id      FK "소속 학과"
+        varchar  position        "직급 (정/부/조교수)"
+        varchar  email        UK "이메일 (고유)"
+        date     hire_date       "임용일"
+    }
+
+    STUDENT {
+        int      student_id   PK "학번"
+        varchar  student_name    "학생명"
+        int      dept_id      FK "소속 학과"
+        char     gender          "성별 (M/F)"
+        date     birth_date      "생년월일"
+        varchar  phone           "연락처 (NULL 허용)"
+        varchar  email        UK "이메일 (NULL 허용)"
+        date     admission_date  "입학일"
+        varchar  status          "학적 (재학/휴학/졸업/제적)"
+    }
+
+    COURSE {
+        int      course_id    PK "강의 ID"
+        varchar  course_code  UK "학수번호 (고유)"
+        varchar  course_name     "강의명"
+        int      dept_id      FK "개설 학과"
+        int      prof_id      FK "담당 교수 (NULL 허용)"
+        int      credits         "학점 (1~4)"
+        varchar  semester        "개설 학기"
+        int      capacity        "수강 정원"
+    }
+
+    ENROLLMENT {
+        int      enroll_id    PK "수강신청 ID"
+        int      student_id   FK "신청 학생"
+        int      course_id    FK "신청 강의"
+        date     enroll_date     "신청일"
+        varchar  grade           "성적 (NULL=진행중)"
+    }

@@ -1,0 +1,29 @@
+$ psql -p 5433 university
+
+접속정보: 데이터베이스="university", 사용자="nys", 소켓="/tmp", 포트="5433".
+
+-- 스키마 목록
+         스키마 목록
+  이름   |      소유주       
+---------+-------------------
+ academy | nys
+ public  | pg_database_owner
+(2개 행)
+
+-- academy 스키마 테이블 목록
+             릴레이션 목록
+ 스키마  |    이름    |  형태  | 소유주 
+---------+------------+--------+--------
+ academy | course     | 테이블 | nys
+ academy | department | 테이블 | nys
+ academy | enrollment | 테이블 | nys
+ academy | professor  | 테이블 | nys
+ academy | student    | 테이블 | nys
+(5개 행)
+
+-- 서버/DB 정보
+     db     | usr | port |                                                             version                                                              
+------------+-----+------+----------------------------------------------------------------------------------------------------------------------------------
+ university | nys |      | PostgreSQL 17.10 (Homebrew) on aarch64-apple-darwin25.4.0, compiled by Apple clang version 21.0.0 (clang-2100.0.123.102), 64-bit
+(1개 행)
+

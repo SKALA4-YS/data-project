@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Day3 종합실습 — 학사관리시스템 DB 설계/구축/조회</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; color: #1f2328; line-height: 1.55; margin: 28px 38px; font-size: 13.5px; }
+  h1 { font-size: 21px; margin: 0; }
+  h2 { font-size: 16px; margin-top: 34px; background: #eef2f7; padding: 7px 12px; border-left: 5px solid #2f5fb0; border-radius: 3px; }
+  h3 { font-size: 14px; margin-top: 20px; color: #2f5fb0; }
+  p { margin: 8px 0; }
+  ul { margin: 8px 0; padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  table.meta { border-collapse: collapse; margin: 10px 0 6px; width: 100%; }
+  table.meta th, table.meta td { border: 1px solid #ccd2da; padding: 6px 11px; font-size: 12.5px; text-align: left; }
+  table.meta th { background: #f4f6f9; white-space: nowrap; width: 130px; }
+  pre { border-radius: 6px; padding: 11px 14px; font-size: 11.5px; line-height: 1.42; margin: 8px 0; }
+  pre.sql { background: #1e1e2e; color: #dfe3f0; white-space: pre-wrap; word-break: break-word; }
+  code { font-family: "SFMono-Regular", Menlo, Consolas, monospace; }
+  .cover { text-align: center; border-bottom: 3px solid #2f5fb0; padding-bottom: 16px; margin-bottom: 8px; }
+  .cover .sub { color: #57606a; margin-top: 6px; font-size: 13px; }
+  .cover .who { color: #2f5fb0; font-weight: 600; margin-top: 10px; }
+  .q { border: 1px solid #d8dee4; border-radius: 8px; padding: 12px 16px; margin: 14px 0; break-inside: avoid; }
+  .q .title { font-weight: 700; color: #b8460e; margin-bottom: 6px; }
+  .tag { display: inline-block; font-size: 10.5px; background: #2f5fb0; color: #fff; border-radius: 10px; padding: 1px 9px; margin-left: 6px; vertical-align: middle; }
+  .erd-wrap { break-inside: avoid; text-align: center; }
+  img.erd { display: block; margin: 8px auto; max-width: 100%; max-height: 880px; border: 1px solid #ccd2da; border-radius: 4px; }
+  img.shot { display: block; margin: 6px auto 2px; max-width: 100%; max-height: 820px; border: 1px solid #c8d0d8; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+  .shotcap { font-size: 11px; color: #57606a; margin: 4px 0 2px; }
+  .shotcap b { color: #2f5fb0; }
+  .note { color: #57606a; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>종합실습 — 학사관리시스템 DB 설계 → 구축 → 조회</h1>
+  <div class="sub">AI 서비스를 위한 SW 기초 Full-stack Engineering · 스마트 데이터 이해 및 활용</div>
+  <div class="who">광주 1반 · 나용성 · 2026-07-22</div>
+</div>
+
+<!-- ================================================================= -->
+<h2>1. 학사관리시스템 요구사항 (설계 방향)</h2>
+<p>대학 학사 업무의 핵심 개체인 <b>학과·교수·학생·강의·수강신청</b>을 정규화된 관계형 모델로 설계하고, PostgreSQL 위에 <b>DB 생성 → 스키마 → DDL → DML → 조회</b>까지 직접 구축한다.</p>
+<ul>
+  <li><b>학과(DEPARTMENT)</b>는 여러 <b>교수·학생·강의</b>를 가진다. (각 1:N)</li>
+  <li><b>교수(PROFESSOR)</b>는 하나의 학과에 소속되며, 여러 <b>강의</b>를 담당한다. (1:N, 담당교수 미배정 강의는 NULL 허용)</li>
+  <li><b>학생(STUDENT)</b>은 하나의 학과에 소속되며, 여러 강의를 수강할 수 있다.</li>
+  <li><b>강의(COURSE)</b>는 하나의 개설 학과와 담당 교수를 가지며, 여러 학생이 수강한다.</li>
+  <li><b>학생 ↔ 강의</b>는 <b>N:M</b> 관계이므로 <b>수강신청(ENROLLMENT)</b> 교차 테이블로 해소하고, 학기별 성적을 관리한다.</li>
+</ul>
+<p><b>무결성 설계 원칙</b></p>
+<ul>
+  <li><b>PK</b>: 모든 테이블에 대리키(SERIAL) 기본키 부여</li>
+  <li><b>FK</b>: 관계마다 외래키 지정 (department ← professor/student/course, professor/course ← enrollment 참조 체인)</li>
+  <li><b>UNIQUE</b>: 학과명, 교수 이메일, 학수번호, 학생 이메일 / 수강신청 (student_id + course_id) 조합 → <b>중복 신청 차단</b></li>
+  <li><b>CHECK</b>: 성별(M/F), 학적(재학/휴학/졸업/제적), 직급(정·부·조교수), 학점(1~4), 성적값, 정원(&gt;0)</li>
+  <li><b>DEFAULT / NOT NULL</b>: 입학일·임용일·신청일 = <code>CURRENT_DATE</code>, 학적 기본값 '재학' 등</li>
+  <li>제3정규형(3NF)을 준수해 이상현상을 방지하고, 다대다 관계는 교차 테이블로 해소</li>
+</ul>
+
+<!-- ================================================================= -->
+<h2>2. ERD (범례 포함)</h2>
+<div class="erd-wrap"><img class="erd" src="erd/university_erd_with_legend.png" alt="학사관리시스템 ERD (범례 포함)"></div>
+<p class="note">5개 엔티티(학과·교수·학생·강의·수강신청)의 관계선이 서로 겹치지 않도록 배치. 다이어그램 하단의 <b>범례(LEGEND) 박스</b>에 PK/FK/UK 표기법, 관계선(||--o{ = 1:N) 의미, N:M 교차테이블 해소 방식, 중복신청 방지·NULL 허용 제약을 설명문으로 명시.</p>
+
+<!-- ================================================================= -->
+<h2>3. PostgreSQL 환경 구성 및 접속 결과 화면</h2>
+<table class="meta">
+  <tr><th>설치</th><td><code>brew install postgresql@17</code> → 버전 <b>17.10</b> (Homebrew)</td></tr>
+  <tr><th>서비스</th><td><code>brew services start postgresql@17</code></td></tr>
+  <tr><th>포트</th><td><b>5433</b> <span class="note">— 이 머신에 시스템 PostgreSQL 18이 5432를 사용 중이라 충돌 방지를 위해 <code>postgresql.conf</code>에서 5433으로 분리</span></td></tr>
+  <tr><th>비밀번호</th><td><code>ALTER USER nys WITH PASSWORD '****';</code> 로 계정 비밀번호 지정 (필수)</td></tr>
+  <tr><th>DB / Schema</th><td><code>university</code> / <code>academy</code></td></tr>
+</table>
+<div class="shotcap">▼ 실제 접속 화면 — <code>psql -p 5433 university</code> 접속 후 <code>\conninfo · \dn · \dt academy.*</code> &nbsp;(<b>docs/00_conn.png</b>)</div>
+<img class="shot" src="docs/00_conn.png" alt="PostgreSQL 접속 확인 화면">
+
+<!-- ================================================================= -->
+<h2>4. DDL — 제약조건 포함 테이블 생성 <span class="tag">CREATE TABLE</span></h2>
+<p class="note">FK 참조 순서를 고려해 department → professor → student → course → enrollment 순으로 생성.</p>
+<pre class="sql">CREATE TABLE department (
+    dept_id       SERIAL       PRIMARY KEY,
+    dept_name     VARCHAR(50)  NOT NULL UNIQUE,          -- 학과명 (고유)
+    college       VARCHAR(50)  NOT NULL,                 -- 단과대학
+    office_phone  VARCHAR(20)                            -- 사무실 전화 (NULL 허용)
+);
+
+CREATE TABLE professor (
+    prof_id    SERIAL        PRIMARY KEY,
+    prof_name  VARCHAR(30)   NOT NULL,
+    dept_id    INT           NOT NULL REFERENCES department(dept_id),
+    position   VARCHAR(10)   NOT NULL DEFAULT '조교수'
+                             CHECK (position IN ('정교수', '부교수', '조교수')),
+    email      VARCHAR(100)  NOT NULL UNIQUE,
+    hire_date  DATE          NOT NULL DEFAULT CURRENT_DATE
+);
+
+CREATE TABLE student (
+    student_id      SERIAL       PRIMARY KEY,             -- 학번
+    student_name    VARCHAR(30)  NOT NULL,
+    dept_id         INT          NOT NULL REFERENCES department(dept_id),
+    gender          CHAR(1)      CHECK (gender IN ('M', 'F')),
+    birth_date      DATE,
+    phone           VARCHAR(20),                          -- NULL 허용
+    email           VARCHAR(100) UNIQUE,                  -- NULL 허용
+    admission_date  DATE         NOT NULL DEFAULT CURRENT_DATE,
+    status          VARCHAR(10)  NOT NULL DEFAULT '재학'
+                                 CHECK (status IN ('재학', '휴학', '졸업', '제적'))
+);
+
+CREATE TABLE course (
+    course_id    SERIAL       PRIMARY KEY,
+    course_code  VARCHAR(10)  NOT NULL UNIQUE,            -- 학수번호
+    course_name  VARCHAR(50)  NOT NULL,
+    dept_id      INT          NOT NULL REFERENCES department(dept_id),
+    prof_id      INT          REFERENCES professor(prof_id),  -- 미배정 가능(NULL)
+    credits      INT          NOT NULL DEFAULT 3 CHECK (credits BETWEEN 1 AND 4),
+    semester     VARCHAR(20)  NOT NULL,
+    capacity     INT          NOT NULL DEFAULT 40 CHECK (capacity > 0)
+);
+
+CREATE TABLE enrollment (
+    enroll_id    SERIAL      PRIMARY KEY,
+    student_id   INT         NOT NULL REFERENCES student(student_id),
+    course_id    INT         NOT NULL REFERENCES course(course_id),
+    enroll_date  DATE        NOT NULL DEFAULT CURRENT_DATE,
+    grade        VARCHAR(2)  CHECK (grade IN ('A+','A','B+','B','C+','C','D+','D','F')),
+    CONSTRAINT uq_enroll_student_course UNIQUE (student_id, course_id)  -- 중복신청 방지
+);</pre>
+<div class="shotcap">▼ 실제 실행 화면 — <code>psql -p 5433 university -f sql/03_ddl_create_table.sql</code> &nbsp;(<b>docs/01_ddl.png</b>)</div>
+<img class="shot" src="docs/01_ddl.png" alt="DDL 실행 결과 화면">
+
+<!-- ================================================================= -->
+<h2>5. DML — 샘플 데이터 입력 <span class="tag">INSERT INTO</span></h2>
+<p class="note">모든 테이블 10건 이상 입력 (department 10 · professor 12 · student 15 · course 12 · enrollment 26, 총 75건). NULL 값을 일부 포함해 COALESCE 실습이 가능하도록 구성.</p>
+<div class="shotcap">▼ 실제 실행 화면 — <code>psql -p 5433 university -f sql/04_dml_insert.sql</code> &nbsp;(<b>docs/02_dml.png</b>)</div>
+<img class="shot" src="docs/02_dml.png" alt="DML 실행 결과 화면">
+
+<!-- ================================================================= -->
+<h2>6. 조회 실습 결과 — 기초 (SELECT · WHERE · ORDER BY)</h2>
+
+<div class="q">
+  <div class="title">Q1. 공과대학 소속 학과 목록 (학과명 오름차순) — SELECT · WHERE · ORDER BY</div>
+  <div class="shotcap">▼ 실제 실행 화면 : SQL + 결과 (<b>docs/03_q01.png</b>)</div>
+  <img class="shot" src="docs/03_q01.png" alt="Q1 실행 결과">
+</div>
+
+<div class="q">
+  <div class="title">Q2. 현재 재학 중인 학생을 입학일 최신순으로 조회 — SELECT · WHERE · ORDER BY</div>
+  <div class="shotcap">▼ 실제 실행 화면 : SQL + 결과 (<b>docs/04_q02.png</b>)</div>
+  <img class="shot" src="docs/04_q02.png" alt="Q2 실행 결과">
+</div>
+
+<div class="q">
+  <div class="title">Q3. 정원이 40명 초과인 강의를 정원 내림차순으로 조회 — SELECT · WHERE · ORDER BY</div>
+  <div class="shotcap">▼ 실제 실행 화면 : SQL + 결과 (<b>docs/05_q03.png</b>)</div>
+  <img class="shot" src="docs/05_q03.png" alt="Q3 실행 결과">
+</div>
+
+<div class="q">
+  <div class="title">Q4. 2015년 이후 임용된 교수를 임용일 오름차순으로 조회 — SELECT · WHERE · ORDER BY</div>
+  <div class="shotcap">▼ 실제 실행 화면 : SQL + 결과 (<b>docs/06_q04.png</b>)</div>
+  <img class="shot" src="docs/06_q04.png" alt="Q4 실행 결과">
+</div>
+
+<!-- ================================================================= -->
+<h2>7. 조회 실습 결과 — 함수 (COALESCE · CASE WHEN · 날짜)</h2>
+
+<div class="q">
+  <div class="title">Q5. COALESCE — 연락처/이메일 미등록 항목을 대체 문자열로 표시</div>
+  <div class="shotcap">▼ 실제 실행 화면 : SQL + 결과 (<b>docs/07_q05.png</b>)</div>
+  <img class="shot" src="docs/07_q05.png" alt="Q5 실행 결과">
+</div>
+
+<div class="q">
+  <div class="title">Q6. CASE WHEN — 수강신청 성적을 등급 구간으로 분류 (NULL=진행중)</div>
+  <div class="shotcap">▼ 실제 실행 화면 : SQL + 결과 (<b>docs/08_q06.png</b>)</div>
+  <img class="shot" src="docs/08_q06.png" alt="Q6 실행 결과">
+</div>
+
+<div class="q">
+  <div class="title">Q7. 날짜 함수 — 만 나이 / 재학 개월 수 계산 (AGE · DATE_PART)</div>
+  <div class="shotcap">▼ 실제 실행 화면 : SQL + 결과 (<b>docs/09_q07.png</b>)</div>
+  <img class="shot" src="docs/09_q07.png" alt="Q7 실행 결과">
+</div>
+
+<div class="q">
+  <div class="title">Q8. CASE WHEN + 날짜 — 교수 근속연수 기준 시니어/미드/주니어 구분</div>
+  <div class="shotcap">▼ 실제 실행 화면 : SQL + 결과 (<b>docs/10_q08.png</b>)</div>
+  <img class="shot" src="docs/10_q08.png" alt="Q8 실행 결과">
+</div>
+
+<!-- ================================================================= -->
+<h2>8. 조회 실습 결과 — 수강신청 교차 테이블 JOIN</h2>
+
+<div class="q">
+  <div class="title">Q9. 수강신청 상세 현황 — 학생·학과·강의·담당교수 5개 테이블 JOIN</div>
+  <div class="shotcap">▼ 실제 실행 화면 : SQL + 결과 (<b>docs/11_q09.png</b>)</div>
+  <img class="shot" src="docs/11_q09.png" alt="Q9 실행 결과">
+</div>
+
+<div class="q">
+  <div class="title">Q10. 강의별 수강 인원 집계 — LEFT JOIN + GROUP BY (정원 대비 신청률)</div>
+  <div class="shotcap">▼ 실제 실행 화면 : SQL + 결과 (<b>docs/12_q10.png</b>)</div>
+  <img class="shot" src="docs/12_q10.png" alt="Q10 실행 결과">
+</div>
+
+<div class="q">
+  <div class="title">Q11. 학생별 신청 과목 수 / 취득 학점 / 진행중 과목 수 (조건부 집계)</div>
+  <div class="shotcap">▼ 실제 실행 화면 : SQL + 결과 (<b>docs/13_q11.png</b>)</div>
+  <img class="shot" src="docs/13_q11.png" alt="Q11 실행 결과">
+</div>
+
+<div class="q">
+  <div class="title">Q12. 학과별 개설 강의 수 및 소속 학생 수 (스칼라 서브쿼리 다중 집계)</div>
+  <div class="shotcap">▼ 실제 실행 화면 : SQL + 결과 (<b>docs/14_q12.png</b>)</div>
+  <img class="shot" src="docs/14_q12.png" alt="Q12 실행 결과">
+</div>
+
+<p class="note" style="margin-top:26px;">— 이상으로 학사관리시스템 DB 설계(ERD) → 구축(DDL/DML) → 조회(WHERE·함수·CASE WHEN·JOIN) 종합실습을 완료함. 모든 결과 화면은 직접 실행 후 캡처하였으며(<code>docs/</code>), 재현용 SQL은 <code>sql/</code>, 실행 로그 텍스트는 <code>results/</code> 폴더에 포함.</p>
+
+</body>
+</html>

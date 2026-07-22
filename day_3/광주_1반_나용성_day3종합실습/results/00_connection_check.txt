@@ -1,0 +1,19 @@
+$ psql -p 5433 academy
+접속정보: 데이터베이스="academy", 사용자="nys", 소켓="/tmp", 포트="5433".
+            스키마 목록
+      이름      |      소유주       
+----------------+-------------------
+ academy_schema | nys
+ public         | pg_database_owner
+(2개 행)
+
+                 릴레이션 목록
+     스키마     |    이름    |  형태  | 소유주 
+----------------+------------+--------+--------
+ academy_schema | course     | 테이블 | nys
+ academy_schema | department | 테이블 | nys
+ academy_schema | enrollment | 테이블 | nys
+ academy_schema | professor  | 테이블 | nys
+ academy_schema | student    | 테이블 | nys
+(5개 행)
+
