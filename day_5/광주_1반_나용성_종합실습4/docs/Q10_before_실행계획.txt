@@ -1,0 +1,13 @@
+-- [Q10 튜닝 전] idx_orders_revts 부분 인덱스가 없는 상태
+-- EXPLAIN (ANALYZE, BUFFERS)  ... AND o.order_ts >= now() - interval '60 days';
+
+Aggregate  (cost=2397.92..2397.93 rows=1) (actual time=17.274..17.276 rows=1 loops=1)
+  Buffers: shared hit=699
+  ...
+  ->  Hash Join  (cost=86.60..415.03 rows=1230) (actual time=12.963..14.572 rows=298 loops=1)
+        Hash Cond: (o.customer_id = cust_rev.customer_id)
+        ->  Seq Scan on orders o  (cost=0.00..302.15 rows=3728) (actual time=0.005..1.467 rows=3750 loops=1)
+              Filter: ((order_status = ANY ('{paid,shipped,delivered}')) AND (order_ts >= (now() - '60 days')))
+              Rows Removed by Filter: 5810          <-- 인덱스 없어 orders 전체 스캔 후 필터로 5810건 버림
+Planning Time: 1.064 ms
+Execution Time: 17.390 ms                            <-- 튜닝 후(Bitmap Index Scan) 9.9ms 대비 약 1.8배 느림
